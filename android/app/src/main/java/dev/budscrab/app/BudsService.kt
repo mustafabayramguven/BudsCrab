@@ -134,7 +134,13 @@ class BudsService : Service() {
             try {
                 val device = adapter.getRemoteDevice(address)
                 sock = device.createRfcommSocketToServiceRecord(UUID.fromString(Buds.session.sppUuid()))
-                adapter.cancelDiscovery()
+                // cancelDiscovery() needs BLUETOOTH_SCAN on Android 12+; we never
+                // start discovery, so only cancel when that permission exists.
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+                    ContextCompat.checkSelfPermission(this@BudsService, Manifest.permission.BLUETOOTH_SCAN) == PackageManager.PERMISSION_GRANTED
+                ) {
+                    runCatching { adapter.cancelDiscovery() }
+                }
                 sock.connect()
                 socket = sock
                 Buds.output = sock.outputStream
@@ -164,8 +170,9 @@ class BudsService : Service() {
                 reason = e.message ?: e.javaClass.simpleName
                 Log.i(TAG, "RFCOMM: $reason")
             } catch (e: SecurityException) {
-                reason = "izin yok"
-                Buds.notice("Bluetooth izni gerekli")
+                reason = "izin hatası: ${e.message}"
+                Log.e(TAG, "SecurityException", e)
+                Buds.notice("Bluetooth izin hatası: ${e.message}")
                 break
             } finally {
                 Buds.output = null
