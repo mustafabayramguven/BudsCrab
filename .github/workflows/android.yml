@@ -1,0 +1,74 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Rust tests
+        run: cargo test --workspace
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --locked
+
+      - name: Build Rust core + Kotlin bindings
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: ./scripts/build-android.sh
+
+      - name: Signing key (optional)
+        env:
+          KEYSTORE_B64: ${{ secrets.BUDSCRAB_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/budscrab.jks"
+            echo "BUDSCRAB_KEYSTORE=$RUNNER_TEMP/budscrab.jks" >> "$GITHUB_ENV"
+          else
+            echo "No signing secret: APK is signed with the CI debug key."
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build APK
+        working-directory: android
+        env:
+          BUDSCRAB_KEYSTORE_PASSWORD: ${{ secrets.BUDSCRAB_KEYSTORE_PASSWORD }}
+          BUDSCRAB_KEY_ALIAS: ${{ secrets.BUDSCRAB_KEY_ALIAS }}
+          BUDSCRAB_KEY_PASSWORD: ${{ secrets.BUDSCRAB_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk budscrab-${{ github.run_number }}.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: budscrab-apk
+          path: budscrab-*.apk
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: budscrab-*.apk

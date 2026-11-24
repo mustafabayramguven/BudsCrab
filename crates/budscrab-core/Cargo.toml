@@ -1,0 +1,26 @@
+[package]
+name = "budscrab-core"
+description = "BudsCrab session logic (state, custom gestures, history, profiles) exported to Kotlin via UniFFI"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "budscrab_core"
+
+[[bin]]
+name = "uniffi-bindgen"
+path = "uniffi-bindgen.rs"
+required-features = ["bindgen"]
+
+[features]
+bindgen = ["uniffi/cli"]
+
+[dependencies]
+budscrab-proto = { path = "../budscrab-proto" }
+uniffi = "0.32"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

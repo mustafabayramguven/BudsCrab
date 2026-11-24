@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+members = ["crates/budscrab-proto", "crates/budscrab-core", "crates/budscrab-cli"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/mustafabayramguven/budscrab"
+authors = ["Mustafa Bayram Güven"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "unwind"
