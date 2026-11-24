@@ -6,7 +6,7 @@ members = ["crates/budscrab-proto", "crates/budscrab-core", "crates/budscrab-cli
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-only"
-repository = "https://github.com/mustafabayramguven/budscrab"
+repository = "https://github.com/mustafabayramguven/BudsCrab"
 authors = ["Mustafa Bayram Güven"]
 
 [profile.release]
